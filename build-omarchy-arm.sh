@@ -154,6 +154,28 @@ confirm() {  # confirm <prompt> <yes|no default>
   yesish "$ans"
 }
 
+# qemu-img treats a bare number as bytes. Typing "60" at "Disk size [80G]"
+# therefore built a 512-byte image, and stage1 died with "device is too small
+# for GPT" (the ESP alone is 1 GiB). A number with no unit is gigabytes.
+normalise_disk_size() {
+  local raw n unit
+  raw=$(printf '%s' "${DISK_SIZE:-80G}" | tr -d '[:space:]')
+  case "$raw" in
+    '') DISK_SIZE=80G; return ;;
+    *[0-9][Gg]|*[0-9][Gg][Ii][Bb]) n=${raw%%[Gg]*}; unit=G; DISK_SIZE="${n}G" ;;
+    *[0-9][Mm]|*[0-9][Mm][Ii][Bb]) n=${raw%%[Mm]*}; unit=M; DISK_SIZE="${n}M" ;;
+    *[0-9][Tt]|*[0-9][Tt][Ii][Bb]) n=${raw%%[Tt]*}; unit=T; DISK_SIZE="${n}T" ;;
+    *[0-9]) n=$raw; unit=G; DISK_SIZE="${n}G" ;;
+    *) die "DISK_SIZE='$DISK_SIZE' is not a size qemu-img understands (try 60G)" ;;
+  esac
+  [[ $n =~ ^[0-9]+$ ]] || die "DISK_SIZE='$DISK_SIZE' is not a size qemu-img understands (try 60G)"
+  case "$unit" in
+    G) (( n >= 16 )) || die "DISK_SIZE=$DISK_SIZE is too small (need at least 16G; the ESP is 1 GiB)" ;;
+    M) (( n >= 16384 )) || die "DISK_SIZE=$DISK_SIZE is too small (need at least 16G)" ;;
+    T) : ;;
+  esac
+}
+
 # Defaults taken from the Mac itself, so most questions are answered with
 # Enter instead of having to look up a timezone name.
 # What is detected from the Mac is a BETTER DEFAULT, not an order: if the
@@ -3700,7 +3722,8 @@ cuestionario() {
   echo
   ask UTM_CPUS    "VM cores"                         "$UTM_CPUS"
   ask UTM_MEM     "VM memory (MiB)"                  "$UTM_MEM"
-  ask DISK_SIZE   "Disk size"                        "$DISK_SIZE"
+  ask DISK_SIZE   "Disk size (GiB if no unit)"       "$DISK_SIZE"
+  normalise_disk_size
   echo
 
   # ~40 min of compiles. Without them the desktop works, but the screensaver,
@@ -3799,6 +3822,8 @@ else
     warn "no $W/respuestas.env: defaults will be used, which may not be what you chose"
   fi
 fi
+normalise_disk_size
+guardar_respuestas
 
 # Phase trimming is decided HERE: after the questionnaire and loading
 # answers, with the definitive HACER_DIST, and never when the user named
