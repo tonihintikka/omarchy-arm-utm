@@ -1,5 +1,10 @@
 # Omarchy 4 on Arch Linux ARM — a UTM VM for Apple Silicon
 
+> Fork of [ggalancs/omarchy-arm-utm](https://github.com/ggalancs/omarchy-arm-utm).
+> The original is in Spanish. This fork translates the builder and docs to
+> English and sets locale defaults to **Europe/Helsinki**, **en_US.UTF-8** and
+> a **Finnish (`fi`)** keyboard. Nothing else is changed.
+
 A **native aarch64** virtual machine (HVF-accelerated, no emulation) running
 Arch Linux ARM + Hyprland with the configuration, themes and tooling of
 [Omarchy 4](https://omarchy.org) — built from macOS by a single script, with no
