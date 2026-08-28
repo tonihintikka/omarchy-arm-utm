@@ -7,10 +7,7 @@ manual steps in the UTM interface.
 
 ![Desktop](shots/hires.png)
 
-> 🇪🇸 The detailed guide and the write-up are in Spanish:
-> **[EMPEZAR.md](EMPEZAR.md)** (how to run it) · **[ARTICULO.md](ARTICULO.md)**
-> (why it is built this way) · **[README.es.md](README.es.md)**.
-> This page has everything you need to get going.
+> **[START.md](START.md)** — how to run it · **[ARTICLE.md](ARTICLE.md)** — why it is built this way.
 
 ## Why not just install Omarchy?
 
@@ -102,10 +99,12 @@ are missing (`qemu`, `expect`, `aria2`), writes the `.utm` bundle into UTM's own
 have VMs running, or if a VM of that name is already registered.
 
 It asks six values that it pre-fills from your Mac — timezone from
-`/etc/localtime`, keyboard from macOS preferences, cores and RAM from `sysctl` —
+`/etc/localtime` (fallback `Europe/Helsinki`), keyboard from macOS preferences
+(Apple **Finnish** → Linux `fi`; fallback `fi`), cores and RAM from `sysctl` —
 so Enter accepts them, then three decisions (compile the tools? include OBS and
 Pinta? prepare the image for distribution?) and a couple of follow-ups depending
-on the last one. Add `--yes` to skip all of it; with no tty it never asks.
+on the last one. Guest language is `en_US.UTF-8` with `fi_FI.UTF-8` generated
+alongside. Add `--yes` to skip all of it; with no tty it never asks.
 
 **The script is a single self-contained file.** It embeds the fifteen files it
 needs — three install stages, the sanitiser, the repair harness, the optional-app
@@ -295,7 +294,7 @@ which ships inside Google Chrome arm64 (`omarchy-arm-extras chrome spotify-web`)
   `-e`, four of the eight phases were structurally incapable of failing.
 
 The full write-up, including the audit that found 37 defects in this very
-script, is in [ARTICULO.md](ARTICULO.md) (Spanish).
+script, is in [ARTICLE.md](ARTICLE.md).
 
 ## Prior art, and where this fits
 
@@ -326,12 +325,12 @@ The trade is the one stated above: no GPU acceleration inside the VM.
 
 ```
 build-omarchy-arm.sh   the autonomous builder, with everything embedded
-EMPEZAR.md             how to run it (ES) — requirements, timings, troubleshooting
-ARTICULO.md            how it was figured out (ES)
+START.md               how to run it — requirements, timings, troubleshooting
+ARTICLE.md             how it was figured out
 provision/src/         stage1..3.sh, repair.sh, sanitize.sh, omarchy-arm-extras, hooks/
 scripts/               qemu, expect harnesses, .utm bundle writer
 fixes/                 the 19 corrections found along the way, as a record
-dist/LEEME.md          the README that ships inside the image (ES)
+dist/README.md         the README that ships inside the image
 ```
 
 ## Status

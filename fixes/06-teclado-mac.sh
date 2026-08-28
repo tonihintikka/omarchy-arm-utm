@@ -1,10 +1,13 @@
 #!/bin/bash
-# Teclado en una VM sobre macOS:
-#  1. Hyprland leia XKBLAYOUT de /etc/vconsole.conf, que solo tenia KEYMAP.
-#  2. macOS se queda con Cmd (Super) antes de que UTM lo vea: Cmd+Space abre
-#     Spotlight, asi que los atajos SUPER de Omarchy son inalcanzables.
-#     altwin:swap_lalt_lwin intercambia Alt y Super, de modo que la tecla
-#     Option (Alt) del Mac actua como SUPER dentro de la VM.
+# Keyboard in a VM on macOS:
+#  1. Hyprland was reading XKBLAYOUT from /etc/vconsole.conf, which only had KEYMAP.
+#  2. macOS keeps Cmd (Super) before UTM sees it: Cmd+Space opens
+#     Spotlight, so Omarchy's SUPER shortcuts are unreachable.
+#     altwin:swap_lalt_lwin swaps Alt and Super, so the Mac's
+#     Option (Alt) key acts as SUPER inside the VM.
+#
+# Historical patch for already-built Spanish images: keep KEYMAP=es /
+# kb_layout = "es". New builds default to fi.
 set -uo pipefail
 log() { echo ""; echo "==> $*"; }
 export XDG_RUNTIME_DIR=/run/user/1000
@@ -13,27 +16,30 @@ export WAYLAND_DISPLAY=$(ls /run/user/1000 2>/dev/null | grep -m1 '^wayland-[0-9
 export OMARCHY_PATH=/usr/share/omarchy
 export PATH=/usr/local/bin:$PATH
 
-log "XKBLAYOUT en /etc/vconsole.conf"
+log "XKBLAYOUT in /etc/vconsole.conf"
 sudo tee /etc/vconsole.conf >/dev/null <<'EOF'
 KEYMAP=es
 XKBLAYOUT=es
 EOF
 cat /etc/vconsole.conf
 
-log "input.lua: layout es + Option como SUPER"
+log "input.lua: es layout + Option as SUPER"
 cat > ~/.config/hypr/input.lua <<'LUA'
--- Ajustes de teclado para esta VM sobre macOS.
+-- Keyboard settings for this VM on macOS.
 --
--- altwin:swap_lalt_lwin intercambia Alt y Super. Motivo: macOS intercepta la
--- tecla Cmd antes de que UTM la reciba (Cmd+Space abre Spotlight), asi que los
--- atajos SUPER de Omarchy serian inalcanzables. Con el intercambio:
+-- Historical patch for already-built Spanish images: kb_layout stays "es".
+-- New builds default to fi.
 --
---     Option (⌥) del Mac  ->  SUPER en la VM   (Option+Space = menu de Omarchy)
---     Cmd (⌘) del Mac     ->  ALT en la VM
+-- altwin:swap_lalt_lwin swaps Alt and Super. Reason: macOS intercepts the
+-- Cmd key before UTM receives it (Cmd+Space opens Spotlight), so
+-- Omarchy's SUPER shortcuts would be unreachable. With the swap:
 --
--- Si prefieres el comportamiento original, borra "altwin:swap_lalt_lwin" y en su
--- lugar activa la captura de entrada de UTM (necesita permisos de Accesibilidad
--- y Monitorizacion de entrada para UTM en Ajustes del Sistema > Privacidad).
+--     Mac Option (⌥)  ->  SUPER in the VM   (Option+Space = Omarchy menu)
+--     Mac Cmd (⌘)     ->  ALT in the VM
+--
+-- If you prefer the original behaviour, delete "altwin:swap_lalt_lwin" and
+-- instead enable UTM's input capture (needs Accessibility and Input
+-- Monitoring permissions for UTM in System Settings > Privacy).
 hl.config({
   input = {
     kb_layout  = "es",
@@ -42,19 +48,19 @@ hl.config({
 })
 LUA
 
-log "recargando Hyprland"
+log "reloading Hyprland"
 hyprctl reload 2>&1 | head -2
 sleep 2
 echo "  configerrors: [$(hyprctl configerrors 2>&1 | head -2)]"
-echo "  teclado ahora:"
+echo "  keyboard now:"
 hyprctl devices 2>/dev/null | sed -n '/Keyboards:/,$p' | head -8
 
-log "abriendo un terminal para que haya algo con lo que interactuar"
+log "opening a terminal so there is something to interact with"
 hyprctl dispatch exec alacritty 2>&1 | head -2
 sleep 5
 hyprctl clients 2>/dev/null | grep -E "^Window|class:" | head -6
 
-log "captura"
+log "screenshot"
 grim /tmp/kbd.png && ls -l /tmp/kbd.png
 echo ""
 echo "==> FIX6_OK"

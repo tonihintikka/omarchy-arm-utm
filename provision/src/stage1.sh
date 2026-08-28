@@ -1,21 +1,21 @@
 #!/bin/sh
-# Etapa 1 — se ejecuta en el live de Alpine (busybox ash).
-# Particiona el disco, despliega el rootfs de Arch Linux ARM y entra en chroot.
+# Stage 1 — runs in the Alpine live environment (busybox ash).
+# Partitions the disk, deploys the Arch Linux ARM rootfs, and enters the chroot.
 set -eu
 PROV=/media/prov
 log()  { echo ""; echo "==> [stage1] $*"; }
 warn() { echo "!!  [stage1] $*"; }
 
-# Marcador de salida fiable: un pipe a tee enmascara el codigo de retorno,
-# asi que el propio script emite el token.
+# Reliable exit marker: a pipe to tee masks the return code,
+# so the script itself emits the token.
 trap 'rc=$?; [ "$rc" -ne 0 ] && echo "TOK_BUILD_$rc"' EXIT
 
-log "red"
+log "network"
 ip link set eth0 up 2>/dev/null || true
 udhcpc -i eth0 -q -n -t 15 >/dev/null 2>&1 || true
-ip -4 addr show eth0 | grep -o 'inet [0-9.]*' || echo "  (sin IPv4)"
+ip -4 addr show eth0 | grep -o 'inet [0-9.]*' || echo "  (no IPv4)"
 
-log "repositorios y herramientas de Alpine"
+log "Alpine repositories and tools"
 V=$(cut -d. -f1,2 < /etc/alpine-release)
 cat > /etc/apk/repositories <<EOF
 https://dl-cdn.alpinelinux.org/alpine/v$V/main
@@ -25,20 +25,20 @@ apk update >/dev/null
 apk add --no-cache parted dosfstools btrfs-progs libarchive-tools e2fsprogs >/dev/null
 echo "  ok: $(parted --version | head -1)"
 
-log "cargando modulos de sistema de ficheros del kernel del live"
+log "loading live kernel filesystem modules"
 for m in btrfs vfat fat nls_cp437 nls_iso8859-1 nls_utf8 crc32c-generic xxhash_generic; do
   modprobe "$m" 2>/dev/null || true
 done
 if grep -qw btrfs /proc/filesystems; then
   ROOTFS=btrfs
 else
-  warn "btrfs no disponible en el kernel del live -> se usara ext4 para la raiz"
+  warn "btrfs not available in the live kernel -> using ext4 for root"
   ROOTFS=ext4
 fi
-grep -qw vfat /proc/filesystems || warn "vfat no listado en /proc/filesystems"
-echo "  raiz: $ROOTFS   filesystems: $(tr '\n' ' ' < /proc/filesystems | tr -s ' ')"
+grep -qw vfat /proc/filesystems || warn "vfat not listed in /proc/filesystems"
+echo "  root: $ROOTFS   filesystems: $(tr '\n' ' ' < /proc/filesystems | tr -s ' ')"
 
-log "particionando $DISK (GPT: ESP 1GiB + raiz $ROOTFS)"
+log "partitioning $DISK (GPT: ESP 1GiB + $ROOTFS root)"
 umount -R /mnt 2>/dev/null || true
 wipefs -a "$DISK" >/dev/null 2>&1 || true
 parted -s "$DISK" mklabel gpt
@@ -57,7 +57,7 @@ parted -s "$DISK" print
 
 MOPT_ROOT=""
 if [ "$ROOTFS" = btrfs ]; then
-  log "subvolumenes btrfs @ y @home"
+  log "btrfs subvolumes @ and @home"
   mount -t btrfs "${DISK}2" /mnt
   btrfs subvolume create /mnt/@     >/dev/null
   btrfs subvolume create /mnt/@home >/dev/null
@@ -74,20 +74,20 @@ else
 fi
 df -h /mnt
 
-log "desplegando rootfs de Arch Linux ARM (bsdtar -xpf, preserva xattr/ACL)"
-# La ESP se monta DESPUES: vfat no admite los symlinks que trae /boot en el
-# tarball. El kernel lo repuebla pacman en stage2 sobre la ESP ya montada.
+log "deploying Arch Linux ARM rootfs (bsdtar -xpf, preserves xattr/ACL)"
+# The ESP is mounted AFTERWARDS: vfat cannot hold the symlinks that /boot
+# ships in the tarball. pacman rebuilds the kernel in stage2 onto the already-mounted ESP.
 bsdtar -xpf "$PROV/alarm-rootfs.tgz" -C /mnt
-echo "  contenido: $(ls /mnt | tr '\n' ' ')"
-[ -d /mnt/etc ] && [ -d /mnt/usr ] || { warn "rootfs incompleto"; exit 1; }
+echo "  contents: $(ls /mnt | tr '\n' ' ')"
+[ -d /mnt/etc ] && [ -d /mnt/usr ] || { warn "incomplete rootfs"; exit 1; }
 
-log "montando la ESP en /boot"
+log "mounting the ESP on /boot"
 rm -rf /mnt/boot
 mkdir -p /mnt/boot
 mount -t vfat "${DISK}1" /mnt/boot
 df -h /mnt /mnt/boot
 
-log "montajes del chroot"
+log "chroot mounts"
 for d in proc sys dev run tmp; do mkdir -p "/mnt/$d"; done
 mount -t proc  none /mnt/proc
 mount -t sysfs none /mnt/sys
@@ -97,11 +97,11 @@ mount -t tmpfs none /mnt/run
 mount -t tmpfs -o size=4G none /mnt/tmp
 mkdir -p /mnt/dev/pts && mount -t devpts none /mnt/dev/pts 2>/dev/null || true
 
-log "DNS dentro del chroot"
+log "DNS inside the chroot"
 rm -f /mnt/etc/resolv.conf
 printf 'nameserver 1.1.1.1\nnameserver 8.8.8.8\n' > /mnt/etc/resolv.conf
 
-log "copiando payload"
+log "copying payload"
 mkdir -p /mnt/root/prov
 cp "$PROV/stage2.sh" "$PROV/stage3.sh" "$PROV/config.env" \
    "$PROV/packages-core.txt" "$PROV/packages-extra.txt" /mnt/root/prov/
@@ -116,19 +116,19 @@ ROOT_MOUNT_OPTS=$MOPT_ROOT
 EOF
 chmod +x /mnt/root/prov/stage2.sh /mnt/root/prov/stage3.sh
 
-log "entrando en chroot -> stage2"
+log "entering chroot -> stage2"
 set +e
 chroot /mnt /bin/bash /root/prov/stage2.sh
 rc=$?
 set -e
 
-log "desmontando"
+log "unmounting"
 sync
 umount -R /mnt/tmp /mnt/run /mnt/dev /mnt/sys /mnt/proc 2>/dev/null || true
 umount -R /mnt/boot 2>/dev/null || true
 umount -R /mnt 2>/dev/null || umount -l /mnt
 sync
-echo "==> [stage1] terminado rc=$rc"
+echo "==> [stage1] finished rc=$rc"
 echo "TOK_BUILD_$rc"
 trap - EXIT
 exit $rc

@@ -1,33 +1,33 @@
 #!/bin/bash
-# Las ventanas de clientes GPU (alacritty, chromium...) se mapean pero no se
-# pintan bajo virtio-gpu/virgl: solo renderizan los clientes que usan buffers
-# de memoria compartida (foot). Comprobado que NO lo arreglan:
-#   - AQ_NO_MODIFIERS=1            (ya estaba activo)
-#   - render:explicit_sync         (eliminado en Hyprland 0.56)
-#   - render:cm_enabled = false    (probado, sigue igual)
-# Lo que si funciona: LIBGL_ALWAYS_SOFTWARE=1, que hace que Mesa use llvmpipe y
-# los clientes entreguen buffers wl_shm. Se pierde la aceleracion GL dentro de
-# la VM, pero el escritorio es utilizable. Para revertirlo cuando Mesa/Hyprland
-# lo arreglen, basta con borrar la linea de /etc/environment.d/90-vm-graphics.conf
+# GPU-client windows (alacritty, chromium...) map but do not
+# paint under virtio-gpu/virgl: only clients that use shared-memory
+# buffers (foot) render. Confirmed that these do NOT fix it:
+#   - AQ_NO_MODIFIERS=1            (already active)
+#   - render:explicit_sync         (removed in Hyprland 0.56)
+#   - render:cm_enabled = false    (tried, still the same)
+# What does work: LIBGL_ALWAYS_SOFTWARE=1, which makes Mesa use llvmpipe and
+# clients deliver wl_shm buffers. You lose GL acceleration inside
+# the VM, but the desktop is usable. To revert it when Mesa/Hyprland
+# fix it, just delete the line in /etc/environment.d/90-vm-graphics.conf
 set -uo pipefail
 log() { echo ""; echo "==> $*"; }
 
-log "LIBGL_ALWAYS_SOFTWARE en el entorno de la sesion"
+log "LIBGL_ALWAYS_SOFTWARE in the session environment"
 sudo tee /etc/environment.d/90-vm-graphics.conf >/dev/null <<'EOF'
-# virtio-gpu (virgl) bajo UTM/QEMU
+# virtio-gpu (virgl) under UTM/QEMU
 WLR_NO_HARDWARE_CURSORS=1
 AQ_NO_MODIFIERS=1
 WLR_RENDERER_ALLOW_SOFTWARE=1
-# Los clientes GPU no entregan buffers componibles bajo virgl: sus ventanas se
-# quedan en negro. Con llvmpipe usan wl_shm y se pintan correctamente.
+# GPU clients do not deliver composable buffers under virgl: their windows
+# stay black. With llvmpipe they use wl_shm and paint correctly.
 LIBGL_ALWAYS_SOFTWARE=1
 EOF
 cat /etc/environment.d/90-vm-graphics.conf
 
-log "looknfeel: sin blur (caro con renderizado por software)"
+log "looknfeel: no blur (expensive with software rendering)"
 cat > ~/.config/hypr/looknfeel.lua <<'LUA'
--- Ajustes para VM: el renderizado va por llvmpipe (ver 90-vm-graphics.conf),
--- asi que el blur sale caro. Sin el, el escritorio va fluido.
+-- VM settings: rendering goes through llvmpipe (see 90-vm-graphics.conf),
+-- so blur is expensive. Without it, the desktop is smooth.
 hl.config({
   decoration = {
     blur = { enabled = false },
@@ -36,6 +36,6 @@ hl.config({
 })
 LUA
 
-log "reiniciando para que todo el arbol de la sesion herede el entorno"
+log "rebooting so the whole session tree inherits the environment"
 sync
 sudo systemctl reboot

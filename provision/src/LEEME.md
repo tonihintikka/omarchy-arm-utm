@@ -1,150 +1,155 @@
-# Omarchy sobre Arch Linux ARM — imagen para UTM en Apple Silicon
+# Omarchy on Arch Linux ARM — UTM image for Apple Silicon
 
-Imagen construida con
+Image built with
 [`build-omarchy-arm.sh`](https://github.com/ggalancs/omarchy-arm-utm).
 
-Máquina virtual **aarch64 nativa** (acelerada con HVF, sin emulación) con
-Arch Linux ARM + Hyprland y la configuración, temas y herramientas de
+A **native aarch64** virtual machine (HVF-accelerated, no emulation) with
+Arch Linux ARM + Hyprland and the configuration, themes and tooling of
 [Omarchy 4](https://omarchy.org).
 
-## Requisitos
+Defaults: timezone `Europe/Helsinki`, language `en_US.UTF-8`, keyboard `fi`
+(Apple Finnish).
 
-- Mac con Apple Silicon (M1 o superior)
-- [UTM](https://mac.getutm.app) 4.7 o posterior
-- ~11 GB de disco libre: el `.zip` ocupa 3,6 GB y la imagen descomprimida
-  otros 7,2 GB, más lo que crezca al usarla
+## Requirements
 
-## Instalación
+- Apple Silicon Mac (M1 or later)
+- [UTM](https://mac.getutm.app) 4.7 or later
+- ~11 GB free disk: the `.zip` is 3.6 GB and the unpacked image another
+  7.2 GB, plus whatever it grows with use
 
-1. Descomprime el `.zip`.
-2. Doble clic en el `.utm` que aparece (o **Archivo → Importar** en UTM).
-3. Arranca la VM.
+## Install
 
-Entra solo, sin pedir contraseña.
+1. Unzip the `.zip`.
+2. Double-click the `.utm` that appears (or **File → Import** in UTM).
+3. Start the VM.
 
-## Credenciales
+It logs in on its own, with no password prompt.
+
+## Credentials
 
 | | |
 |---|---|
-| Usuario | `omarchy` |
-| Contraseña | `omarchy` (también para root) |
+| User | `omarchy` |
+| Password | `omarchy` (also for root) |
 
-**Cambia la contraseña nada más entrar:** abre un terminal y ejecuta `passwd`.
+**Change the password as soon as you log in:** open a terminal and run `passwd`.
 
-## Teclado
+## Keyboard
 
-macOS se queda con la tecla Cmd antes de que UTM la reciba (Cmd+Space abre
-Spotlight), así que la VM está configurada con Alt y Super intercambiados:
+macOS grabs Cmd before UTM sees it (Cmd+Space opens Spotlight), so the VM
+ships with Alt and Super swapped:
 
-| Tecla del Mac | En la VM |
+| Mac key | In the VM |
 |---|---|
 | **Option (⌥)** | SUPER |
 | Cmd (⌘) | ALT |
 
-Atajos principales: **⌥+Space** abre el menú de Omarchy, **⌥+Return** un
-terminal, **⌥+K** el listado completo de atajos.
+Main shortcuts: **⌥+Space** opens the Omarchy menu, **⌥+Return** a
+terminal, **⌥+K** the full keybinding list.
 
-Si prefieres el comportamiento original, quita `altwin:swap_lalt_lwin` de
-`~/.config/hypr/input.lua` y activa la captura de entrada de UTM (requiere dar
-permisos de Accesibilidad y Monitorización de entrada a UTM en Ajustes del
-Sistema → Privacidad y seguridad).
+If you prefer the original behaviour, remove `altwin:swap_lalt_lwin` from
+`~/.config/hypr/input.lua` and enable UTM input capture (requires
+Accessibility and Input Monitoring permission for UTM in System Settings →
+Privacy & Security).
 
-## Qué esperar
+The layout is **Finnish** (`fi`), matching Apple's "Finnish" keyboard.
 
-Funciona: el escritorio Hyprland completo con la barra de Omarchy, temas,
-menú, terminal, navegador, y los 439 comandos `omarchy-*`.
+## What to expect
 
-Incluye además las herramientas propias de Omarchy **compiladas para aarch64**,
-que no se publican para ARM: `tensaku` (anotación de capturas), `omacalc`,
-`omacut`, `omawrite`, `aether` (temas), `cliamp` (reproductor), `ttfx` (efectos
-del salvapantallas), `omarchy-nvim`, `mise`, `tzupdate`, `yaru-icon-theme`,
+It works: the full Hyprland desktop with the Omarchy bar, themes, menu,
+terminal, browser, and the 439 `omarchy-*` commands.
+
+It also includes Omarchy's own tools **compiled for aarch64**, which are not
+published for ARM: `tensaku` (screenshot annotation), `omacalc`, `omacut`,
+`omawrite`, `aether` (themes), `cliamp` (player), `ttfx` (screensaver
+effects), `omarchy-nvim`, `mise`, `tzupdate`, `yaru-icon-theme`,
 `ttf-ia-writer`, `hyprland-preview-share-picker`, `xdg-terminal-exec`,
-`tobi-try`, `ufw-docker` y `yay`.
+`tobi-try`, `ufw-docker` and `yay`.
 
-Y dos aplicaciones de software libre ya compiladas para ARM: **OBS Studio
-32.2.2** (sin el plugin de navegador, cuyo CEF es x86-only) y **Pinta 3.1.2**
-(sobre el .NET arm64 oficial de Microsoft).
+And two free-software apps already built for ARM: **OBS Studio 32.2.2**
+(without the browser plugin, whose CEF is x86-only) and **Pinta 3.1.2**
+(on Microsoft's official arm64 .NET).
 
-Limitaciones propias de correr Omarchy en ARM:
+Limitations of running Omarchy on ARM:
 
-- **Sin aceleración GL dentro de la VM.** Las ventanas se dibujan por software
-  (llvmpipe). Bajo virtio-gpu los clientes GPU se mapean pero no se pintan; el
-  blur y las sombras vienen desactivados para compensar. Es fluido para uso
-  normal, no para vídeo ni 3D.
-- **Falta `herdr`**: quiere la semántica de Zig 0.15, y ni ARM ni x86_64
-  empaquetan ya esa versión (los dos van por la 0.16).
-- **El disco viene comprimido** dentro del `.qcow2`. Ocupa la mitad y se
-  descomprime al vuelo; si prefieres velocidad de lectura sobre espacio,
-  `qemu-img convert -O qcow2 disco.qcow2 sin-comprimir.qcow2`.
+- **No GL acceleration inside the VM.** Windows are drawn in software
+  (llvmpipe). Under virtio-gpu, GPU clients map but never paint; blur and
+  shadows are disabled to compensate. Fine for normal use, not for video or 3D.
+- **`herdr` is missing**: it wants Zig 0.15 semantics, and neither ARM nor
+  x86_64 packages that version any more (both are on 0.16).
+- **The disk is compressed** inside the `.qcow2`. It is half the size and
+  decompresses on the fly; if you prefer read speed over space,
+  `qemu-img convert -O qcow2 disk.qcow2 uncompressed.qcow2`.
 
-## Portapapeles y carpeta compartida
+## Clipboard and shared folder
 
-**El portapapeles funciona en los dos sentidos**: copias en el Mac y pegas en
-la VM, y al revés. Solo texto. Dos condiciones:
+**Clipboard works both ways**: copy on the Mac and paste in the VM, and
+the other way around. Text only. Two conditions:
 
-- **«Share clipboard» activado** en UTM (*Preferencias de la VM → Sharing*).
-- **La VM abierta como ventana.** Arrancada sin ventana (`utmctl start`) no hay
-  ningún cliente SPICE conectado, así que el canal existe pero no lleva nada.
+- **Share clipboard enabled** in UTM (*VM Settings → Sharing*).
+- **The VM open as a window.** Started without a window (`utmctl start`) there
+  is no SPICE client attached, so the channel exists but carries nothing.
 
-Si no va, esto dice en cuál de los tres saltos se corta —cliente SPICE →
-`spice-vdagentd` → sesión de Hyprland—:
-
-```bash
-systemctl is-active spice-vdagentd              # el demonio
-systemctl --user status omarchy-arm-vdagent     # el agente de tu sesión
-```
-
-**Carpeta compartida**: elige una en *Preferencias de la VM → Sharing* y dentro
-ejecuta `omarchy-arm-share`. Detecta solo si UTM está en modo VirtFS o en modo
-SPICE WebDAV y la monta en `/mnt/share` de la forma que corresponda.
-`omarchy-arm-share --status` para ver cómo quedó, `--umount` para soltarla.
-
-## Las apps que no vienen dentro
-
-1Password, Obsidian, Typora, LocalSend y Google Chrome **no están en la
-imagen**, pero no porque no funcionen: todas tienen build ARM64 oficial. No van
-dentro porque son propietarias y empaquetarlas en una imagen que se distribuye
-sería redistribuir binarios de terceros.
-
-La imagen trae un instalador que las descarga de su fuente oficial:
+If it does not work, this shows which of the three hops is cut — SPICE client →
+`spice-vdagentd` → Hyprland session —:
 
 ```bash
-omarchy-arm-extras --list     # ver qué puede instalar
-omarchy-arm-extras            # menú interactivo
-omarchy-arm-extras obsidian   # una concreta
-omarchy-arm-extras --all      # todas las que falten
+systemctl is-active spice-vdagentd              # the daemon
+systemctl --user status omarchy-arm-vdagent     # your session agent
 ```
 
-El listado marca `[ya instalada]` lo que la imagen ya trae, y `--all` lo omite.
+**Shared folder**: pick one in *VM Settings → Sharing* and inside the guest
+run `omarchy-arm-share`. It detects whether UTM is in VirtFS or SPICE WebDAV
+mode and mounts it at `/mnt/share` accordingly.
+`omarchy-arm-share --status` to see how it landed, `--umount` to unmount.
 
-También está en el menú de aplicaciones como **«Instalar apps que faltan (ARM)»**.
+## Apps that are not in the image
 
-| Clave | Qué hace |
+1Password, Obsidian, Typora, LocalSend and Google Chrome **are not in the
+image**, but not because they do not work: they all have an official ARM64
+build. They are not included because they are proprietary and shipping them
+in a distributed image would mean redistributing third-party binaries.
+
+The image carries an installer that fetches them from their official source:
+
+```bash
+omarchy-arm-extras --list     # see what it can install
+omarchy-arm-extras            # interactive menu
+omarchy-arm-extras obsidian   # one specific app
+omarchy-arm-extras --all      # everything missing
+```
+
+The listing marks `[already installed]` what the image already has, and
+`--all` skips those.
+
+It is also in the application menu as **Install missing apps (ARM)**.
+
+| Key | What it does |
 |---|---|
-| `1password` | Tarball arm64 oficial, con verificación de firma GPG |
-| `1password-cli` | El comando `op`, binario estático arm64 |
-| `obsidian` | Tarball arm64 oficial |
-| `typora` | Paquete arm64 oficial vía AUR |
-| `localsend` | Build arm64 oficial |
-| `chrome` | Trae Widevine para arm64: habilita Spotify y Netflix web |
-| `spotify-web` | Lanzador de la web + reasigna `⌥+Shift+M` |
-| `pinta` | Ya viene instalada; la clave sirve para reinstalarla |
-| `obs` | Ya viene instalado; la clave sirve para reinstalarlo |
+| `1password` | Official arm64 tarball, with GPG signature check |
+| `1password-cli` | The `op` command, official static arm64 binary |
+| `obsidian` | Official arm64 tarball |
+| `typora` | Official arm64 package via AUR |
+| `localsend` | Official arm64 build |
+| `chrome` | Brings Widevine for arm64: enables Spotify and Netflix web |
+| `spotify-web` | Web launcher + remaps `⌥+Shift+M` |
+| `pinta` | Already installed; the key reinstalls it |
+| `obs` | Already installed; the key reinstalls it |
 
-**Sobre Spotify**: no hay cliente nativo para ARM, pero la web sí funciona —
-necesita Widevine, que viene dentro de Google Chrome arm64. Instala `chrome` y
-luego `spotify-web`. En terminal ya tienes `spotify-player` instalado.
-- **`omarchy-update` funciona**, pero cuando Omarchy introduzca un paquete
-  propio nuevo, lo omitirá con un aviso en vez de instalarlo.
+**On Spotify**: there is no native ARM client, but the web app works — it
+needs Widevine, which ships inside Google Chrome arm64. Install `chrome`
+then `spotify-web`. In the terminal you already have `spotify-player`.
+- **`omarchy-update` works**, but when Omarchy introduces a new first-party
+  package it will skip it with a warning instead of installing it.
 
-## Resolución
+## Resolution
 
-Fija en 1920x1200. Para cambiarla, edita `~/.config/hypr/monitors.lua` y
-**reinicia la VM** — cambiar el modo en caliente deja la pantalla en blanco bajo
+Fixed at 1920x1200. To change it, edit `~/.config/hypr/monitors.lua` and
+**reboot the VM** — changing the mode at runtime whites out the screen under
 virtio-gpu.
 
-## Nota
+## Note
 
-Imagen no oficial, sin relación con Basecamp ni con el proyecto Omarchy.
-Omarchy solo soporta x86_64; esto es una reconstrucción equivalente sobre
+Unofficial image, unaffiliated with Basecamp or the Omarchy project.
+Omarchy only supports x86_64; this is an equivalent reconstruction on
 Arch Linux ARM.

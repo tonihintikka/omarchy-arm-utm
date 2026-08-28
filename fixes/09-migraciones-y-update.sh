@@ -1,39 +1,39 @@
 #!/bin/bash
-# omarchy-update fallaba porque el build no sello las migraciones existentes.
-# Un instalador normal de Omarchy las marca todas como aplicadas al terminar
-# (el sistema ya nace con el estado final); aqui solo habia 8 de 83 selladas,
-# asi que omarchy-update intento reproducir 75 migraciones historicas y murio
-# en la que sustituye `dust` por `tensaku`, paquete propio de Omarchy que no
-# existe en Arch Linux ARM. De paso dejo el sistema sin `dust`.
+# omarchy-update failed because the build did not seal the existing migrations.
+# A normal Omarchy installer marks them all as applied on completion
+# (the system is already born in the final state); here only 8 of 83 were sealed,
+# so omarchy-update tried to replay 75 historical migrations and died
+# on the one that replaces `dust` with `tensaku`, an Omarchy first-party package that does not
+# exist in Arch Linux ARM. Along the way it left the system without `dust`.
 set -uo pipefail
 log() { echo ""; echo "==> $*"; }
 STATE="$HOME/.local/state/omarchy/migrations"
 MIGR=/usr/share/omarchy/migrations
 
-log "1/5 sellando las migraciones existentes (como un install limpio)"
+log "1/5 sealing existing migrations (like a clean install)"
 mkdir -p "$STATE"
 n=0
 for f in "$MIGR"/*.sh; do
   b=$(basename "$f")
   [ -e "$STATE/$b" ] || { : > "$STATE/$b"; n=$((n+1)); }
 done
-echo "  selladas $n nuevas; total $(ls -1 "$STATE" | wc -l) de $(ls -1 "$MIGR"/*.sh | wc -l)"
-echo "  pendientes ahora: $(omarchy-migrate --pending 2>/dev/null | wc -l)"
+echo "  sealed $n new; total $(ls -1 "$STATE" | wc -l) of $(ls -1 "$MIGR"/*.sh | wc -l)"
+echo "  pending now: $(omarchy-migrate --pending 2>/dev/null | wc -l)"
 
-log "2/5 recuperando dust (lo quito la migracion fallida)"
+log "2/5 recovering dust (the failed migration removed it)"
 sudo pacman -S --noconfirm --needed dust 2>&1 | tail -3
 pacman -Q dust 2>&1
 
-log "3/5 blindando omarchy-pkg-add frente a paquetes que no existen en ARM"
+log "3/5 hardening omarchy-pkg-add against packages that do not exist on ARM"
 sudo tee /usr/local/bin/omarchy-pkg-add >/dev/null <<'WRAP'
 #!/bin/bash
-# Envoltorio para Arch Linux ARM.
+# Wrapper for Arch Linux ARM.
 #
-# Los paquetes propios de Omarchy (tensaku, omarchy-nvim, ttfx...) y varias apps
-# propietarias solo existen para x86_64. El omarchy-pkg-add original aborta con
-# error si alguno falta, lo que hace fallar omarchy-update entero y deja las
-# migraciones a medias. Este envoltorio omite los que no estan en ningun repo,
-# avisa de cuales, e instala el resto con el script original.
+# Omarchy's first-party packages (tensaku, omarchy-nvim, ttfx...) and several
+# proprietary apps only exist for x86_64. The original omarchy-pkg-add aborts with
+# an error if any is missing, which makes the whole omarchy-update fail and leaves
+# migrations half-applied. This wrapper skips those that are in no repo,
+# reports which, and installs the rest with the original script.
 REAL=/usr/share/omarchy/bin/omarchy-pkg-add
 avail=(); skip=()
 for p in "$@"; do
@@ -44,25 +44,25 @@ for p in "$@"; do
   fi
 done
 if ((${#skip[@]})); then
-  printf '\033[33mOmitido, no existe en Arch Linux ARM: %s\033[0m\n' "${skip[*]}" >&2
+  printf '\033[33mSkipped, does not exist in Arch Linux ARM: %s\033[0m\n' "${skip[*]}" >&2
 fi
 ((${#avail[@]})) || exit 0
 exec "$REAL" "${avail[@]}"
 WRAP
 sudo chmod +x /usr/local/bin/omarchy-pkg-add
-echo "  probando el envoltorio:"
+echo "  testing the wrapper:"
 omarchy-pkg-add tensaku jq 2>&1 | tail -3
 
-log "4/5 limpiando huerfanos de las compilaciones AUR"
+log "4/5 cleaning orphans from the AUR builds"
 orph=$(pacman -Qdtq 2>/dev/null)
-[ -n "$orph" ] && sudo pacman -Rns --noconfirm $orph 2>&1 | tail -3 || echo "  (ninguno)"
+[ -n "$orph" ] && sudo pacman -Rns --noconfirm $orph 2>&1 | tail -3 || echo "  (none)"
 
-log "5/5 re-ejecutando omarchy-update"
+log "5/5 re-running omarchy-update"
 OMARCHY_UPDATE_NONINTERACTIVE=1 omarchy-update 2>&1 | tail -25
-echo "  codigo de salida: $?"
+echo "  exit code: $?"
 
-log "estado"
-echo "  pendientes: $(omarchy-migrate --pending 2>/dev/null | wc -l)"
-echo "  dust:       $(pacman -Q dust 2>/dev/null || echo NO)"
+log "state"
+echo "  pending: $(omarchy-migrate --pending 2>/dev/null | wc -l)"
+echo "  dust:    $(pacman -Q dust 2>/dev/null || echo NO)"
 echo ""
 echo "==> FIX9_OK"

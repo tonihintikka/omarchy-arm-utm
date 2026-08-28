@@ -1,12 +1,12 @@
 #!/bin/bash
-# Arranca un disco ya instalado con GPU virtio y captura la pantalla por el
-# monitor de QEMU. Evita tener que registrar el bundle en UTM solo para mirar.
+# Boots an already-installed disk with virtio GPU and captures the screen via
+# the QEMU monitor. Avoids having to register the bundle in UTM just to look.
 set -e
-# La raiz se deduce de la ubicacion del propio script: asi el repo se puede
-# clonar en cualquier sitio sin editar nada.
+# The root is deduced from this script's location, so the repo can be
+# cloned anywhere without editing anything.
 ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 cd "$ROOT"
-: "${DISK_IMG:?falta DISK_IMG}"
+: "${DISK_IMG:?DISK_IMG is required}"
 : "${OUT:=shots/qemu-shot.png}"
 : "${WAIT:=150}"
 FW=$(brew --prefix qemu)/share/qemu/edk2-aarch64-code.fd
@@ -32,11 +32,11 @@ QPID=$!
 trap 'kill -TERM $QPID 2>/dev/null; rm -f "$VARS"' EXIT
 
 for i in $(seq 1 30); do [ -S "$MON" ] && break; sleep 1; done
-echo "arrancando, esperando ${WAIT}s al escritorio..."
+echo "booting, waiting ${WAIT}s for the desktop..."
 sleep "$WAIT"
 
-# Despierta la sesion: tras ~2 min hypridle lanza el salvapantallas y la
-# captura saldria en negro.
+# Wake the session: after ~2 min hypridle starts the screensaver and the
+# capture would come out black.
 printf 'sendkey esc\n' | nc -U "$MON" >/dev/null
 sleep 8
 PPM="$SCRATCH/shot.ppm"
@@ -44,4 +44,4 @@ printf 'screendump %s\nquit\n' "$PPM" | nc -U "$MON" >/dev/null
 sleep 3
 sips -s format png "$PPM" --out "$OUT" >/dev/null
 rm -f "$PPM"
-echo "captura: $OUT"
+echo "screenshot: $OUT"

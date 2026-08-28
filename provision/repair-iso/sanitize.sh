@@ -1,26 +1,26 @@
 #!/bin/bash
-# Sanitizado para distribucion: quita todo lo identificativo del sistema y deja
-# un usuario generico. Se ejecuta como ROOT dentro del chroot.
+# Sanitize for distribution: strips everything identifying from the system and leaves
+# a generic user. Runs as ROOT inside the chroot.
 set -uo pipefail
 OLD="${DIST_OLD_USER:-gabriel}"
 NEW="${DIST_NEW_USER:-omarchy}"
 log()  { echo ""; echo "==> $*"; }
 warn() { echo "!!  $*" >&2; }
 
-log "1/10 desanclando /usr/share/omarchy del home del usuario"
-# Era un symlink a /home/gabriel/.local/share/omarchy, lo que ata el sistema a
-# ese usuario. Se convierte en directorio real (como haria el paquete pacman) y
-# el home pasa a apuntar ahi.
+log "1/10 unanchoring /usr/share/omarchy from the user's home"
+# It was a symlink to /home/gabriel/.local/share/omarchy, which ties the system to
+# that user. It is turned into a real directory (as the pacman package would) and
+# the home then points there.
 if [ -L /usr/share/omarchy ]; then
   TARGET=$(readlink -f /usr/share/omarchy)
   rm -f /usr/share/omarchy
   cp -a "$TARGET" /usr/share/omarchy
   chown -R root:root /usr/share/omarchy
   rm -rf "$TARGET"
-  echo "  /usr/share/omarchy ahora es un directorio real ($(du -sh /usr/share/omarchy | cut -f1))"
+  echo "  /usr/share/omarchy is now a real directory ($(du -sh /usr/share/omarchy | cut -f1))"
 fi
 
-log "2/10 renombrando el usuario $OLD -> $NEW"
+log "2/10 renaming user $OLD -> $NEW"
 if id -u "$OLD" >/dev/null 2>&1; then
   pkill -u "$OLD" 2>/dev/null || true
   usermod -l "$NEW" -d "/home/$NEW" -m "$OLD"
@@ -29,13 +29,13 @@ if id -u "$OLD" >/dev/null 2>&1; then
   echo "root:$NEW"  | chpasswd
 fi
 id "$NEW"
-# el home del usuario apunta al arbol del sistema
+# the user's home points at the system tree
 install -d -o "$NEW" -g "$NEW" "/home/$NEW/.local/share"
 rm -rf "/home/$NEW/.local/share/omarchy"
 ln -sfn /usr/share/omarchy "/home/$NEW/.local/share/omarchy"
 chown -h "$NEW:$NEW" "/home/$NEW/.local/share/omarchy"
 
-log "3/10 SDDM: autologin al usuario generico"
+log "3/10 SDDM: autologin to the generic user"
 cat > /etc/sddm.conf.d/20-autologin.conf <<EOF
 [Autologin]
 User=$NEW
@@ -44,16 +44,16 @@ EOF
 grep -rl "$OLD" /etc/sddm.conf.d/ 2>/dev/null | while read -r f; do sed -i "s/\b$OLD\b/$NEW/g" "$f"; done
 cat /etc/sddm.conf.d/20-autologin.conf
 
-log "4/10 credenciales y claves"
+log "4/10 credentials and keys"
 rm -rf "/home/$NEW/.ssh"
-rm -f /etc/ssh/ssh_host_*        # se regeneran solas en el primer arranque
+rm -f /etc/ssh/ssh_host_*        # they regenerate on their own at first boot
 systemctl disable sshd.service 2>/dev/null || true
 rm -f /etc/systemd/system/multi-user.target.wants/sshd.service
 rm -f /etc/sudoers.d/99-fix /etc/sudoers.d/99-install
 rm -rf "/home/$NEW/.gnupg" "/home/$NEW/.local/share/keyrings" "/home/$NEW/.password-store"
 echo "  sshd: $(systemctl is-enabled sshd 2>&1)"
 
-log "5/10 identidad de la maquina"
+log "5/10 machine identity"
 : > /etc/machine-id
 rm -f /var/lib/dbus/machine-id
 ln -sf /etc/machine-id /var/lib/dbus/machine-id
@@ -64,86 +64,86 @@ cat > /etc/hosts <<'EOF'
 127.0.1.1   omarchy.localdomain omarchy
 EOF
 
-log "6/10 identidad personal (git, historiales, cache)"
+log "6/10 personal identity (git, histories, cache)"
 rm -f "/home/$NEW/.gitconfig" "/home/$NEW/.config/git/config"
 rm -f "/home/$NEW/.bash_history" "/home/$NEW/.zsh_history" "/home/$NEW/.local/share/fish/fish_history"
 rm -rf "/home/$NEW/.cache" "/home/$NEW/.local/state/omarchy/first-run.log"
 rm -rf "/home/$NEW/.local/share/omarchy-"* 2>/dev/null || true
 rm -rf "/home/$NEW/shots" "/home/$NEW"/*.sh "/home/$NEW/config.env" 2>/dev/null || true
-# NetworkManager: quita redes wifi guardadas
+# NetworkManager: remove saved wifi networks
 rm -f /etc/NetworkManager/system-connections/* 2>/dev/null || true
 
-log "7b/10 apps propietarias fuera de la imagen distribuible"
-# Estas se instalan con omarchy-arm-extras en la maquina del usuario final.
-# Empaquetarlas en un .zip que se reparte seria redistribuir binarios de
-# terceros, asi que se retiran aunque estuvieran en la VM de origen.
+log "7b/10 proprietary apps out of the distributable image"
+# These are installed with omarchy-arm-extras on the end user's machine.
+# Packaging them in a .zip that is distributed would be redistributing
+# third-party binaries, so they are removed even if they were in the source VM.
 for pkg in 1password 1password-cli typora localsend-bin google-chrome obsidian-bin; do
-  pacman -Q "$pkg" >/dev/null 2>&1 && { pacman -Rns --noconfirm "$pkg" >/dev/null 2>&1 && echo "  retirado $pkg"; }
+  pacman -Q "$pkg" >/dev/null 2>&1 && { pacman -Rns --noconfirm "$pkg" >/dev/null 2>&1 && echo "  removed $pkg"; }
 done
 for d in /opt/1Password /opt/obsidian /opt/typora; do
-  [ -e "$d" ] && { rm -rf "$d"; echo "  retirado $d"; }
+  [ -e "$d" ] && { rm -rf "$d"; echo "  removed $d"; }
 done
 rm -f /usr/local/bin/obsidian /usr/local/share/applications/obsidian.desktop 2>/dev/null || true
-# Los rastros que dejan al instalarse: si se retira Chrome hay que retirar
-# tambien el atajo y el lanzador de la webapp de Spotify, que lo invocan. Si no,
-# la imagen sale con un SUPER+SHIFT+M que apunta a un binario inexistente.
+# Traces they leave when installing: if Chrome is removed the Spotify webapp
+# shortcut and launcher, which invoke it, must be removed too. Otherwise
+# the image ships with a SUPER+SHIFT+M that points at a missing binary.
 BIND="/home/$NEW/.config/hypr/bindings.lua"
 if [ -f "$BIND" ] && grep -q "open.spotify.com" "$BIND"; then
-  sed -i '/^-- Spotify no tiene cliente nativo/,/^o.bind("SUPER + SHIFT + M", "Spotify"/d' "$BIND"
+  sed -i '/^-- Spotify has no native client/,/^o.bind("SUPER + SHIFT + M", "Spotify"/d' "$BIND"
   sed -i '/open\.spotify\.com/d' "$BIND"
-  echo "  retirado el atajo SUPER+SHIFT+M de la webapp de Spotify"
+  echo "  removed the SUPER+SHIFT+M shortcut for the Spotify webapp"
 fi
 rm -f "/home/$NEW/.local/share/applications/Spotify.desktop" \
       "/home/$NEW/.local/share/applications/spotify.desktop" 2>/dev/null || true
 rm -rf "/home/$NEW/.local/share/omarchy/webapps" 2>/dev/null || true
-echo "  (se reinstalan con: omarchy-arm-extras)"
+echo "  (reinstall with: omarchy-arm-extras)"
 
-log "7/10 logs y caches del sistema"
+log "7/10 system logs and caches"
 rm -rf /var/log/journal/* /var/log/omarchy* /var/log/pacman.log
 find /var/log -type f -name "*.log" -delete 2>/dev/null || true
 rm -rf /var/cache/pacman/pkg/* /var/tmp/* /tmp/* 2>/dev/null || true
 rm -rf /root/prov /root/.bash_history /root/.cache 2>/dev/null || true
 
-log "8/10 aviso al destinatario"
+log "8/10 notice to the recipient"
 cat > /etc/motd <<'EOF'
 
-  Omarchy sobre Arch Linux ARM (aarch64) — imagen para UTM en Apple Silicon
+  Omarchy on Arch Linux ARM (aarch64) — UTM image for Apple Silicon
 
-  Usuario: omarchy   Contrasena: omarchy   (tambien para root)
+  User: omarchy   Password: omarchy   (also for root)
 
-  >> CAMBIA LA CONTRASENA AHORA:  passwd
+  >> CHANGE THE PASSWORD NOW:  passwd
 
-  Teclas: la tecla Option (⌥) del Mac actua como SUPER.
-          ⌥+Space  menu de Omarchy      ⌥+Return  terminal
+  Keys: the Mac's Option (⌥) key acts as SUPER.
+        ⌥+Space  Omarchy menu      ⌥+Return  terminal
 
-  ¿Echas en falta 1Password, Obsidian, Typora, Spotify o LocalSend?
-  No vienen dentro por licencia, pero todas tienen build ARM64 oficial:
+  Missing 1Password, Obsidian, Typora, Spotify or LocalSend?
+  They are not included because of licensing, but all have an official ARM64 build:
 
-      omarchy-arm-extras --list     ver que puede instalar
-      omarchy-arm-extras            menu interactivo
+      omarchy-arm-extras --list     see what it can install
+      omarchy-arm-extras            interactive menu
 
 EOF
 install -d -o "$NEW" -g "$NEW" "/home/$NEW/Desktop"
 cp /etc/motd "/home/$NEW/Desktop/LEEME.txt"
 chown "$NEW:$NEW" "/home/$NEW/Desktop/LEEME.txt"
 
-log "8a/10 hook de actualizacion para ARM"
-# omarchy-update-dev no actualiza el arbol cuando OMARCHY_PATH es
-# /usr/share/omarchy, que es nuestro caso: sin este hook Omarchy se congela.
+log "8a/10 update hook for ARM"
+# omarchy-update-dev does not update the tree when OMARCHY_PATH is
+# /usr/share/omarchy, which is our case: without this hook Omarchy freezes.
 if [ -f /root/prov/10-arm-sync ]; then
   install -Dm755 /root/prov/10-arm-sync "/home/$NEW/.config/omarchy/hooks/post-update.d/10-arm-sync"
   chown -R "$NEW:$NEW" "/home/$NEW/.config/omarchy/hooks" 2>/dev/null || true
   echo "  post-update.d/10-arm-sync"
 fi
-# El checkout no debe ensuciarse por cambios de permisos, o el pull fallara
+# The checkout must not get dirty from permission changes, or the pull will fail
 git -C /usr/share/omarchy config core.fileMode false 2>/dev/null || true
 git -C /usr/share/omarchy checkout -- . 2>/dev/null || true
-echo "  checkout limpio: $(git -C /usr/share/omarchy status --porcelain 2>/dev/null | wc -l) ficheros"
+echo "  clean checkout: $(git -C /usr/share/omarchy status --porcelain 2>/dev/null | wc -l) files"
 
-log "8b/10 instalador de apps opcionales"
-# repair.sh copia extras.sh como omarchy-arm-extras, pero si esa copia no
-# ocurriera el bloque entero se saltaba en silencio y la imagen salia sin la
-# entrada de menu. Se aceptan los dos nombres y se avisa si falta.
+log "8b/10 optional apps installer"
+# repair.sh copies extras.sh as omarchy-arm-extras, but if that copy did not
+# happen the whole block was skipped silently and the image shipped without the
+# menu entry. Both names are accepted and a warning is issued if it is missing.
 EXTRAS_SRC=""
 for c in /root/prov/omarchy-arm-extras /root/prov/extras.sh; do
   [ -f "$c" ] && { EXTRAS_SRC="$c"; break; }
@@ -152,7 +152,7 @@ if [ -n "$EXTRAS_SRC" ]; then
   install -Dm755 "$EXTRAS_SRC" /usr/local/bin/omarchy-arm-extras
   install -Dm644 /dev/stdin /usr/local/share/applications/omarchy-arm-extras.desktop <<'DESK'
 [Desktop Entry]
-Name=Instalar apps que faltan (ARM)
+Name=Install missing apps (ARM)
 Comment=1Password, Obsidian, Typora, LocalSend, Chrome, OBS, Pinta
 Exec=xdg-terminal-exec omarchy-arm-extras
 Icon=system-software-install
@@ -161,65 +161,65 @@ Type=Application
 Categories=System;PackageManager;
 DESK
   chown "$NEW:$NEW" /usr/local/share/applications/omarchy-arm-extras.desktop 2>/dev/null || true
-  echo "  /usr/local/bin/omarchy-arm-extras + entrada en el menu"
+  echo "  /usr/local/bin/omarchy-arm-extras + menu entry"
 else
-  warn "el instalador de apps opcionales no venia en el ISO: la imagen saldra sin el"
+  warn "the optional-apps installer was not in the ISO: the image will ship without it"
 fi
 
-log "9/10 comprobando que nada quedo atado a $OLD"
-echo "  referencias en /etc:"; grep -rl "\b$OLD\b" /etc 2>/dev/null | head -5 || echo "    ninguna"
+log "9/10 checking that nothing stayed tied to $OLD"
+echo "  references in /etc:"; grep -rl "\b$OLD\b" /etc 2>/dev/null | head -5 || echo "    none"
 echo "  home:"; ls -ld "/home/$NEW"; ls /home/
-echo "  propietario de ficheros sueltos:"; find /home/$NEW -maxdepth 2 ! -user "$NEW" 2>/dev/null | head -3 || echo "    todo correcto"
+echo "  owner of leftover files:"; find /home/$NEW -maxdepth 2 ! -user "$NEW" 2>/dev/null | head -3 || echo "    all correct"
 
-log "10/10 liberando espacio no usado (para que comprima mejor)"
+log "10/10 freeing unused space (so it compresses better)"
 sync
 fstrim -av 2>&1 | head -3 || true
 echo ""
-log "ficheros de respaldo de usermod (contienen el usuario y el hash antiguos)"
+log "usermod backup files (contain the old user and hash)"
 rm -f /etc/passwd- /etc/shadow- /etc/group- /etc/gshadow-
 log "subuid/subgid"
 sed -i "s/^$OLD:/$NEW:/" /etc/subuid /etc/subgid 2>/dev/null || true
 cat /etc/subuid /etc/subgid 2>/dev/null
 
-log "barrido final de referencias a $OLD"
-echo "  /etc:"; grep -rl "\b$OLD\b" /etc 2>/dev/null || echo "    ninguna"
-echo "  /home:"; grep -rl "\b$OLD\b" /home/$NEW/.config /home/$NEW/.bashrc 2>/dev/null | head -5 || echo "    ninguna"
-echo "  /usr/local/bin:"; grep -rl "\b$OLD\b" /usr/local/bin 2>/dev/null | head -5 || echo "    ninguna"
-echo "  /usr/share/omarchy (no debe apuntar a /home):"; ls -ld /usr/share/omarchy
+log "final sweep of references to $OLD"
+echo "  /etc:"; grep -rl "\b$OLD\b" /etc 2>/dev/null || echo "    none"
+echo "  /home:"; grep -rl "\b$OLD\b" /home/$NEW/.config /home/$NEW/.bashrc 2>/dev/null | head -5 || echo "    none"
+echo "  /usr/local/bin:"; grep -rl "\b$OLD\b" /usr/local/bin 2>/dev/null | head -5 || echo "    none"
+echo "  /usr/share/omarchy (must not point at /home):"; ls -ld /usr/share/omarchy
 
-log "coherencia del sistema"
+log "system consistency"
 echo "  passwd: $(getent passwd $NEW)"
 echo "  home:   $(ls -ld /home/$NEW | awk '{print $3, $4, $9}')"
-echo "  symlink omarchy: $(readlink /home/$NEW/.local/share/omarchy)"
+echo "  omarchy symlink: $(readlink /home/$NEW/.local/share/omarchy)"
 echo "  autologin: $(grep -h User= /etc/sddm.conf.d/*.conf 2>/dev/null | tr '\n' ' ')"
-echo "  binarios omarchy: $(ls /usr/local/bin | wc -l)"
+echo "  omarchy binaries: $(ls /usr/local/bin | wc -l)"
 echo "  ttfx: $(command -v ttfx || echo NO)"
-echo "  migraciones selladas: $(ls -1 /home/$NEW/.local/state/omarchy/migrations 2>/dev/null | wc -l)"
+echo "  migrations sealed: $(ls -1 /home/$NEW/.local/state/omarchy/migrations 2>/dev/null | wc -l)"
 sync
 echo ""
-log "marcadores de Nautilus/GTK apuntando al home antiguo"
+log "Nautilus/GTK bookmarks pointing at the old home"
 for f in /home/$NEW/.config/gtk-3.0/bookmarks /home/$NEW/.config/gtk-4.0/bookmarks; do
   [ -f "$f" ] && { sed -i "s#/home/$OLD#/home/$NEW#g" "$f"; echo "  $f:"; cat "$f"; }
 done
 
-log "nombre real en passwd (aparece en el greeter)"
+log "real name in passwd (shown in the greeter)"
 chfn -f "Omarchy" "$NEW" 2>/dev/null || usermod -c "Omarchy" "$NEW"
 getent passwd "$NEW"
 
-log "user-dirs con rutas absolutas"
+log "user-dirs with absolute paths"
 for f in /home/$NEW/.config/user-dirs.dirs; do
   [ -f "$f" ] && sed -i "s#/home/$OLD#/home/$NEW#g" "$f"
 done
 
-log "symlinks que apuntan al home antiguo"
-# grep -rl solo mira el CONTENIDO de los ficheros: el destino de un enlace
-# simbolico no es contenido, asi que el barrido de texto los da por limpios.
-# Omarchy guarda el tema y el fondo activos como enlaces
-# (~/.local/state/omarchy/current/{theme,background}), de modo que un enlace
-# colgado deja el escritorio en gris y sin estilo, sin ningun error visible.
+log "symlinks that point at the old home"
+# grep -rl only looks at file CONTENTS: a symbolic link's target
+# is not content, so the text sweep treats them as clean.
+# Omarchy stores the active theme and wallpaper as links
+# (~/.local/state/omarchy/current/{theme,background}), so a dangling
+# link leaves the desktop grey and unstyled, with no visible error.
 mapfile -t BADLINKS < <(find /home/$NEW /etc /usr/local /opt -xdev -type l \
   -lname "*/home/$OLD/*" 2>/dev/null)
-echo "  encontrados: ${#BADLINKS[@]}"
+echo "  found: ${#BADLINKS[@]}"
 for l in "${BADLINKS[@]:-}"; do
   [ -n "$l" ] || continue
   tgt=$(readlink "$l")
@@ -228,30 +228,30 @@ for l in "${BADLINKS[@]:-}"; do
 done
 chown -h $NEW:$NEW "${BADLINKS[@]:-/home/$NEW}" 2>/dev/null || true
 
-log "barrido final"
-echo "  /etc:   $(grep -rl "\b$OLD\b" /etc 2>/dev/null | wc -l) coincidencias"
-echo "  /home:  $(grep -rl "\b$OLD\b" /home/$NEW/.config /home/$NEW/.bashrc /home/$NEW/.bash_profile 2>/dev/null | wc -l) coincidencias"
-echo "  enlaces a /home/$OLD: $(find /home/$NEW /etc /usr/local /opt -xdev -type l -lname "*/home/$OLD/*" 2>/dev/null | wc -l)"
-echo "  enlaces rotos en el home: $(find /home/$NEW -xdev -type l ! -exec test -e {} \; -print 2>/dev/null | wc -l)"
-echo "  fondo activo: $(readlink -f /home/$NEW/.local/state/omarchy/current/background 2>/dev/null || echo NINGUNO)"
+log "final sweep"
+echo "  /etc:   $(grep -rl "\b$OLD\b" /etc 2>/dev/null | wc -l) matches"
+echo "  /home:  $(grep -rl "\b$OLD\b" /home/$NEW/.config /home/$NEW/.bashrc /home/$NEW/.bash_profile 2>/dev/null | wc -l) matches"
+echo "  links to /home/$OLD: $(find /home/$NEW /etc /usr/local /opt -xdev -type l -lname "*/home/$OLD/*" 2>/dev/null | wc -l)"
+echo "  broken links in home: $(find /home/$NEW -xdev -type l ! -exec test -e {} \; -print 2>/dev/null | wc -l)"
+echo "  active wallpaper: $(readlink -f /home/$NEW/.local/state/omarchy/current/background 2>/dev/null || echo NONE)"
 test -e "/home/$NEW/.local/state/omarchy/current/background" \
-  && echo "  fondo resuelve: OK" || echo "  fondo resuelve: ROTO"
-echo "  (nota: /usr/local/bin/ttfx contiene la ruta de compilacion en su info de"
-echo "   depuracion; es inocuo y no expone nada util)"
+  && echo "  wallpaper resolves: OK" || echo "  wallpaper resolves: BROKEN"
+echo "  (note: /usr/local/bin/ttfx contains the compilation path in its"
+echo "   debug info; it is harmless and does not expose anything useful)"
 
-log "estado final para distribuir"
-echo "  usuario:    $(getent passwd $NEW | cut -d: -f1,5,6)"
-echo "  autologin:  $(grep -h User= /etc/sddm.conf.d/*.conf 2>/dev/null | sort -u | tr '\n' ' ')"
-echo "  sshd:       $(systemctl is-enabled sshd 2>&1)"
-echo "  instalador opcional: $(test -x /usr/local/bin/omarchy-arm-extras && echo si || echo FALTA)"
-echo "  entrada de menu:     $(test -f /usr/local/share/applications/omarchy-arm-extras.desktop && echo si || echo FALTA)"
-echo "  machine-id: $(wc -c < /etc/machine-id) bytes (vacio = se regenera)"
+log "final state for distribution"
+echo "  user:            $(getent passwd $NEW | cut -d: -f1,5,6)"
+echo "  autologin:       $(grep -h User= /etc/sddm.conf.d/*.conf 2>/dev/null | sort -u | tr '\n' ' ')"
+echo "  sshd:            $(systemctl is-enabled sshd 2>&1)"
+echo "  optional installer: $(test -x /usr/local/bin/omarchy-arm-extras && echo yes || echo MISSING)"
+echo "  menu entry:         $(test -f /usr/local/share/applications/omarchy-arm-extras.desktop && echo yes || echo MISSING)"
+echo "  machine-id: $(wc -c < /etc/machine-id) bytes (empty = regenerates)"
 echo ""
-echo "  AVISO: a partir de aqui la imagen no debe volver a arrancarse. El primer"
-echo "  arranque regenera machine-id, semilla de aleatoriedad y logs, y esos"
-echo "  quedarian identicos en todas las copias distribuidas. Si hay que"
-echo "  arrancarla para verificar algo, repite esta fase despues."
-echo "  claves ssh host: $(ls /etc/ssh/ssh_host_* 2>/dev/null | wc -l) (0 = se regeneran)"
+echo "  WARNING: from here on the image must not be booted again. The first"
+echo "  boot regenerates machine-id, randomness seed and logs, and those"
+echo "  would be identical in every distributed copy. If it has to be"
+echo "  booted to verify something, repeat this phase afterwards."
+echo "  ssh host keys: $(ls /etc/ssh/ssh_host_* 2>/dev/null | wc -l) (0 = they regenerate)"
 echo "  hostname:   $(cat /etc/hostname)"
 sync
 fstrim -av 2>&1 | head -2 || true

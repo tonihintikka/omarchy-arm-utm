@@ -1,0 +1,525 @@
+<title>Build Omarchy ARM</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap">
+
+<style>
+:root {
+  --bg:       #F6F8FA;
+  --surface:  #FFFFFF;
+  --surface-2:#EDF1F5;
+  --ink:      #12161C;
+  --ink-2:    #59636F;
+  --ink-3:    #8792A0;
+  --rule:     #DDE3EA;
+  --accent:   #D8452C;
+  --accent-soft: #FBEAE6;
+  --good:     #1F7A57;
+  --warn:     #A5650F;
+  --term-bg:  #14181E;
+  --term-ink: #D7DEE7;
+  --term-dim: #6F7B89;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg:       #0D1116;
+    --surface:  #151A21;
+    --surface-2:#1D242C;
+    --ink:      #E7ECF2;
+    --ink-2:    #A2AEBC;
+    --ink-3:    #6E7C8B;
+    --rule:     #262F39;
+    --accent:   #FF6E52;
+    --accent-soft: #2B1A16;
+    --good:     #4FBF8F;
+    --warn:     #D9A34A;
+    --term-bg:  #0A0D11;
+    --term-ink: #D7DEE7;
+    --term-dim: #6F7B89;
+  }
+}
+:root[data-theme="dark"] {
+  --bg:       #0D1116;
+  --surface:  #151A21;
+  --surface-2:#1D242C;
+  --ink:      #E7ECF2;
+  --ink-2:    #A2AEBC;
+  --ink-3:    #6E7C8B;
+  --rule:     #262F39;
+  --accent:   #FF6E52;
+  --accent-soft: #2B1A16;
+  --good:     #4FBF8F;
+  --warn:     #D9A34A;
+  --term-bg:  #0A0D11;
+  --term-ink: #D7DEE7;
+  --term-dim: #6F7B89;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  font-size: 17px;
+  line-height: 1.62;
+  -webkit-font-smoothing: antialiased;
+}
+
+.wrap { max-width: 60rem; margin: 0 auto; padding: 0 1.6rem 6rem; }
+
+/* ── header ──────────────────────────────────────────────── */
+.top {
+  border-bottom: 1px solid var(--rule);
+  margin-bottom: 3.5rem;
+  padding: 4.5rem 0 2.5rem;
+}
+.kicker {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: .74rem; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--accent); margin: 0 0 1rem;
+}
+h1 {
+  font-family: Archivo, ui-sans-serif, sans-serif;
+  font-weight: 700; font-size: clamp(2.3rem, 6vw, 3.4rem);
+  line-height: 1.04; letter-spacing: -.025em;
+  margin: 0 0 1.1rem; text-wrap: balance;
+}
+.lede { font-size: 1.14rem; color: var(--ink-2); max-width: 40rem; margin: 0; }
+
+/* ── two paths ───────────────────────────────────────────── */
+.paths { display: grid; gap: 1rem; margin: 2.5rem 0 0; }
+@media (min-width: 44rem) { .paths { grid-template-columns: 1fr 1fr; } }
+.path {
+  background: var(--surface); border: 1px solid var(--rule);
+  border-radius: 4px; padding: 1.15rem 1.3rem;
+}
+.path.pick { border-color: var(--accent); background: var(--accent-soft); }
+.path h3 {
+  font-family: Archivo, sans-serif; font-size: 1rem; font-weight: 600;
+  margin: 0 0 .3rem; letter-spacing: -.01em;
+}
+.path p { margin: 0; font-size: .92rem; color: var(--ink-2); }
+.path .dur {
+  font-family: "IBM Plex Mono", monospace; font-size: .78rem;
+  color: var(--accent); display: block; margin-top: .55rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── numbered sections ───────────────────────────────────── */
+section { margin: 4rem 0 0; scroll-margin-top: 2rem; }
+h2 {
+  font-family: Archivo, sans-serif; font-weight: 600;
+  font-size: 1.6rem; letter-spacing: -.02em; line-height: 1.2;
+  margin: 0 0 1.2rem; display: flex; align-items: baseline; gap: .8rem;
+  text-wrap: balance;
+}
+h2 .n {
+  font-family: "IBM Plex Mono", monospace; font-size: .82rem;
+  color: var(--accent); font-weight: 500;
+  border: 1px solid var(--accent); border-radius: 3px;
+  padding: .1rem .42rem; flex: none; letter-spacing: 0;
+}
+h3 {
+  font-family: Archivo, sans-serif; font-weight: 600; font-size: 1.05rem;
+  margin: 2.2rem 0 .7rem; letter-spacing: -.01em;
+}
+p { margin: 0 0 1.1rem; max-width: 44rem; }
+ul { margin: 0 0 1.1rem; padding-left: 1.15rem; max-width: 44rem; }
+li { margin-bottom: .45rem; }
+strong { font-weight: 600; }
+a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+
+code {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: .875em; background: var(--surface-2);
+  padding: .1em .35em; border-radius: 3px;
+}
+
+/* ── terminal blocks ─────────────────────────────────────── */
+.term {
+  background: var(--term-bg); color: var(--term-ink);
+  border-radius: 5px; padding: 1.1rem 1.25rem; margin: 1.4rem 0;
+  overflow-x: auto; font-family: "IBM Plex Mono", monospace;
+  font-size: .84rem; line-height: 1.72;
+}
+.term pre { margin: 0; }
+.term .c  { color: var(--term-dim); }
+.term .p  { color: #FF8A70; }
+.term .g  { color: #6FCf9F; }
+
+/* ── requirements ────────────────────────────────────────── */
+.reqs { display: grid; gap: 0; margin: 1.6rem 0; border-top: 1px solid var(--rule); }
+.req {
+  display: grid; gap: .1rem .9rem; padding: .95rem 0;
+  border-bottom: 1px solid var(--rule); align-items: start;
+}
+@media (min-width: 40rem) { .req { grid-template-columns: 13rem 1fr auto; align-items: baseline; } }
+.req .what { font-weight: 600; }
+.req .why  { color: var(--ink-2); font-size: .93rem; }
+.req .how  {
+  font-family: "IBM Plex Mono", monospace; font-size: .78rem;
+  color: var(--ink-3); white-space: nowrap;
+}
+
+/* ── phase timeline ──────────────────────────────────────── */
+.phases { margin: 1.6rem 0 1rem; }
+.ph {
+  display: grid; grid-template-columns: 5.5rem 1fr 3.4rem;
+  gap: .8rem; align-items: center; padding: .34rem 0;
+}
+.ph .name {
+  font-family: "IBM Plex Mono", monospace; font-size: .82rem; color: var(--ink-2);
+}
+.ph .track { background: var(--surface-2); border-radius: 2px; height: 1.15rem; position: relative; }
+.ph .bar {
+  position: absolute; inset: 0 auto 0 0; border-radius: 2px;
+  background: var(--ink-3); min-width: 3px;
+}
+.ph.big .bar { background: var(--accent); }
+.ph.big .name { color: var(--ink); font-weight: 500; }
+.ph .t {
+  font-family: "IBM Plex Mono", monospace; font-size: .78rem;
+  color: var(--ink-3); text-align: right; font-variant-numeric: tabular-nums;
+}
+.ph .desc { grid-column: 2 / -1; font-size: .84rem; color: var(--ink-3); margin: -.1rem 0 .3rem; }
+.total {
+  display: flex; flex-wrap: wrap; gap: .5rem 1.4rem; align-items: baseline;
+  border-top: 1px solid var(--rule); margin-top: .9rem; padding-top: .9rem;
+  font-family: "IBM Plex Mono", monospace; font-size: .84rem;
+}
+.total b { font-size: 1.15rem; color: var(--accent); font-weight: 500; }
+
+/* ── notes ───────────────────────────────────────────────── */
+.note {
+  border-left: 2px solid var(--accent); padding: .1rem 0 .1rem 1.1rem;
+  margin: 1.5rem 0; color: var(--ink-2); font-size: .96rem; max-width: 44rem;
+}
+.note strong { color: var(--ink); }
+
+/* ── questions ───────────────────────────────────────────── */
+.q { border-top: 1px solid var(--rule); padding: 1.2rem 0; max-width: 46rem; }
+.q:last-of-type { border-bottom: 1px solid var(--rule); }
+.q h4 {
+  font-family: Archivo, sans-serif; font-size: 1rem; font-weight: 600;
+  margin: 0 0 .4rem; letter-spacing: -.01em;
+}
+.q p { margin: 0 0 .5rem; font-size: .95rem; color: var(--ink-2); }
+.q .cost {
+  font-family: "IBM Plex Mono", monospace; font-size: .76rem;
+  color: var(--accent); letter-spacing: .02em;
+}
+
+.foot {
+  margin-top: 5rem; padding-top: 1.6rem; border-top: 1px solid var(--rule);
+  color: var(--ink-3); font-size: .88rem;
+}
+</style>
+
+<div class="wrap">
+
+<header class="top">
+  <p class="kicker">Arch Linux ARM · Hyprland · UTM on Apple Silicon</p>
+  <h1>Build Omarchy ARM</h1>
+  <p class="lede">
+    Omarchy 4 cannot be installed on ARM64. This reconstructs its desktop on
+    Arch Linux ARM, in a native aarch64 virtual machine accelerated with HVF, from
+    macOS and with a single command.
+  </p>
+
+  <div class="paths">
+    <div class="path">
+      <h3>I just want the VM</h3>
+      <p>Download <code>omarchy-arm-utm-v2.zip</code> from the
+      <a href="https://archive.org/details/omarchy-arm-utm">Internet Archive</a> (3.6 GB), double-click, and it boots on its own.</p>
+      <span class="dur">10 minutes + the download</span>
+    </div>
+    <div class="path pick">
+      <h3>I want to build it myself</h3>
+      <p><code>./build-omarchy-arm.sh</code> and answer with Enter, except for three decisions.</p>
+      <span class="dur">1 h — 1 h 50</span>
+    </div>
+  </div>
+</header>
+
+<section>
+  <h2><span class="n">1</span> What you need</h2>
+
+  <div class="reqs">
+    <div class="req">
+      <span class="what">Apple Silicon Mac</span>
+      <span class="why">The VM is native aarch64 with HVF. On Intel you would have to emulate and it would take a day.</span>
+      <span class="how">uname -m → arm64</span>
+    </div>
+    <div class="req">
+      <span class="what">Homebrew</span>
+      <span class="why">The script installs <code>qemu</code>, <code>expect</code> and <code>aria2</code> if they are missing.</span>
+      <span class="how">brew --version</span>
+    </div>
+    <div class="req">
+      <span class="what">UTM 4.7 or later</span>
+      <span class="why">That is where the virtual machine is registered.</span>
+      <span class="how">brew install --cask utm</span>
+    </div>
+    <div class="req">
+      <span class="what">Command Line Tools</span>
+      <span class="why">That is where <code>git</code> and <code>python3</code> come from, which the script uses to compute the package list.</span>
+      <span class="how">xcode-select -p</span>
+    </div>
+    <div class="req">
+      <span class="what">~40 GB free</span>
+      <span class="why">The working directory reaches about 24 GB at its peak, and APFS clones can push it higher.</span>
+      <span class="how">df -h ~</span>
+    </div>
+    <div class="req">
+      <span class="what">A decent connection</span>
+      <span class="why">Downloads ~900 MB of base images and then about 1,500 packages from the Arch Linux ARM repos.</span>
+      <span class="how">—</span>
+    </div>
+  </div>
+
+  <p>If something is missing:</p>
+  <div class="term"><pre><span class="c"># git and python3</span>
+xcode-select --install
+
+<span class="c"># Homebrew</span>
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+brew install --cask utm</pre></div>
+
+  <div class="note">
+    <strong>No <code>sudo</code> needed.</strong> The script does not touch anything on the
+    host system: everything it needs it writes inside its working directory, and the
+    three Homebrew dependencies are installed as your user.
+  </div>
+</section>
+
+<section>
+  <h2><span class="n">2</span> What context it needs</h2>
+
+  <p>
+    <strong>None: it is a single file.</strong> <code>build-omarchy-arm.sh</code> embeds
+    the fifteen files it needs — the three install stages, the sanitiser, the
+    repairer, the optional-app installer, the update hook,
+    the VM configuration, the two <code>expect</code> harnesses, the QEMU launcher
+    and the <code>.utm</code> bundle writer — plus the README that ships inside the zip.
+    It writes them to disk at startup. You can copy just that file to another Mac and
+    it will work the same.
+  </p>
+
+  <p>
+    The only thing you can give it in advance, to save yourself ~900 MB of download, are the
+    base images:
+  </p>
+
+  <div class="term"><pre>mkdir -p ~/omarchy-arm-build/dl
+cp alpine-virt-*-aarch64.iso     ~/omarchy-arm-build/dl/alpine-virt-aarch64.iso
+cp ArchLinuxARM-aarch64-*.tar.gz ~/omarchy-arm-build/dl/alarm-rootfs.tgz</pre></div>
+
+  <p>
+    The working directory is <code>~/omarchy-arm-build</code> unless you set another
+    with <code>W=/path/you/want</code>.
+  </p>
+</section>
+
+<section>
+  <h2><span class="n">3</span> Running it</h2>
+
+  <div class="term"><pre><span class="p">$</span> ./build-omarchy-arm.sh</pre></div>
+
+  <p>
+    That is it. With a terminal it first asks six questions pre-filled with what it detects
+    from your Mac, so they are answered with Enter:
+  </p>
+
+  <div class="term"><pre><span class="g">━━━ configuration ━━━</span>
+  Timezone [Europe/Helsinki]:              <span class="c">← from /etc/localtime</span>
+  Keyboard (console) [fi]:                 <span class="c">← from macOS preferences</span>
+  Keyboard (Hyprland/Wayland) [fi]:
+  VM cores [6]:                            <span class="c">← half of your performance cores</span>
+  VM memory (MiB) [12288]:                 <span class="c">← based on your RAM</span>
+  Disk size [80G]:</pre></div>
+
+  <p>And then the three that <strong>do change the result</strong>:</p>
+
+  <div class="q">
+    <h4>Compile the 17 Omarchy tools that do not exist for ARM (~40 min)?</h4>
+    <p>
+      If you say no, the desktop works the same, but you will be missing <code>ttfx</code> (the
+      screensaver), <code>tensaku</code> (annotate screenshots), <code>omacalc</code>,
+      <code>omacut</code>, <code>omawrite</code>, <code>aether</code>, <code>cliamp</code>
+      and <code>omarchy-nvim</code>. They can be added later with <code>yay -S</code>.
+    </p>
+    <span class="cost">+40 min</span>
+  </div>
+
+  <div class="q">
+    <h4>Include OBS Studio and Pinta (free software, they compile: ~45 min)?</h4>
+    <p>
+      They are free software, so they can travel inside the image, and the one that is distributed
+      includes them. OBS is compiled entirely from source (without the browser plugin, whose CEF
+      is x86-only) and Pinta needs Microsoft's official arm64 .NET. It is the most expensive part of
+      the whole process.
+    </p>
+    <span class="cost">+50 min</span>
+  </div>
+
+  <div class="q">
+    <h4>Prepare the image for distribution?</h4>
+    <p>
+      <strong>No</strong> leaves the VM with your user and your configuration, and skips the
+      <code>sanitize</code> and <code>package</code> phases. <strong>Yes</strong> renames the
+      user to <code>omarchy</code>, deletes SSH keys, git identity and histories, and
+      produces a <code>.zip</code> with its <code>sha256</code>.
+    </p>
+    <span class="cost">+13 min</span>
+  </div>
+
+  <p style="margin-top:1.6rem">To answer nothing:</p>
+  <div class="term"><pre><span class="p">$</span> ./build-omarchy-arm.sh --yes   <span class="c"># does not ask: builds the image ready to distribute</span></pre></div>
+  <p>
+    With no terminal — cron, CI, <code>nohup</code> — it does not ask either: it detects that there is no tty and
+    continues in unattended mode.
+  </p>
+</section>
+
+<section>
+  <h2><span class="n">4</span> How long each phase takes</h2>
+
+  <p>
+    Measured on a real build on an M3 Max, with the tools compiled and without
+    OBS or Pinta.
+  </p>
+
+  <div class="phases">
+    <div class="ph"><span class="name">deps</span><span class="track"><span class="bar" style="width:1%"></span></span><span class="t">~10 s</span>
+      <span class="desc">checks the Mac and installs qemu, expect and aria2 if they are missing</span></div>
+    <div class="ph"><span class="name">fetch</span><span class="track"><span class="bar" style="width:3.5%"></span></span><span class="t">2 min</span>
+      <span class="desc">downloads Alpine and the ALARM rootfs, verifying sha256 and MD5</span></div>
+    <div class="ph"><span class="name">prepare</span><span class="track"><span class="bar" style="width:1%"></span></span><span class="t">~10 s</span>
+      <span class="desc">crosses Omarchy's live branch with the Arch Linux ARM index</span></div>
+    <div class="ph big"><span class="name">build</span><span class="track"><span class="bar" style="width:70%"></span></span><span class="t">40 min</span>
+      <span class="desc">Alpine headless, partitioning, rootfs and the three stages in chroot</span></div>
+    <div class="ph"><span class="name">utm</span><span class="track"><span class="bar" style="width:1.8%"></span></span><span class="t">1 min</span>
+      <span class="desc">writes the <code>.utm</code> bundle and registers it in UTM</span></div>
+    <div class="ph"><span class="name">verify</span><span class="track"><span class="bar" style="width:7%"></span></span><span class="t">4 min</span>
+      <span class="desc">boots and requires seven conditions: Hyprland and quickshell alive, ≥400 commands, ≤5 broken links, ≥6 units, version 4 and a complete clipboard</span></div>
+    <div class="ph"><span class="name">sanitize</span><span class="track"><span class="bar" style="width:17.5%"></span></span><span class="t">10 min</span>
+      <span class="desc">copies the disk and cleans it for distribution</span></div>
+    <div class="ph"><span class="name">package</span><span class="track"><span class="bar" style="width:5.3%"></span></span><span class="t">3 min</span>
+      <span class="desc">compacts the qcow2, creates the bundle and compresses it</span></div>
+  </div>
+
+  <div class="total">
+    <span><b>76–83 min</b> in total</span>
+    <span>→ 3.6 GB of <code>.zip</code></span>
+    <span>~24 GB peak on disk</span>
+    <span>with OBS and Pinta included</span>
+  </div>
+
+  <p style="margin-top:1.6rem">
+    The <code>build</code> phase prints almost nothing while it works. To watch it from the inside:
+  </p>
+  <div class="term"><pre><span class="p">$</span> tail -f ~/omarchy-arm-build/logs/build.log</pre></div>
+</section>
+
+<section>
+  <h2><span class="n">5</span> If something fails</h2>
+
+  <p>Every phase is resumable, so you do not have to start from scratch:</p>
+
+  <div class="term"><pre><span class="p">$</span> ./build-omarchy-arm.sh --from build    <span class="c"># resume from there</span>
+<span class="p">$</span> ./build-omarchy-arm.sh --only package  <span class="c"># repeat only one phase</span>
+<span class="p">$</span> ./build-omarchy-arm.sh --list          <span class="c"># see the valid names</span></pre></div>
+
+  <p>
+    Resuming <strong>does not ask again</strong>: it reuses what you already decided. Logs
+    land in <code>~/omarchy-arm-build/logs/</code>, one per phase. The <code>build</code>
+    one is the one that matters: it carries the full output of the three stages inside the guest, with
+    the prefixes <code>[stage1]</code>, <code>[stage2]</code> and <code>[stage3]</code>.
+  </p>
+
+  <h3>Three deliberate behaviours</h3>
+  <ul>
+    <li>If a disk has already been built, <code>build</code> <strong>does not delete it</strong>: it
+      moves it to <code>omarchy-arm.qcow2.anterior</code> and starts a new one.</li>
+    <li>If a VM of the same name already exists in UTM, <strong>it does not delete it</strong>:
+      it registers the new one appending the time to the name.</li>
+    <li>For UTM to recognise a new bundle you have to restart the application, because it only
+      scans <code>Documents</code> at launch. If you have VMs running, the script warns and
+      lets you decide; in unattended mode it does not kill them, and tells you to import the bundle
+      by hand with <strong>File → Import</strong>.</li>
+  </ul>
+</section>
+
+<section>
+  <h2><span class="n">6</span> When it finishes</h2>
+
+  <p>The VM appears in UTM and boots on its own, without asking for a password.</p>
+
+  <div class="note">
+    <strong>The Option key (⌥) acts as SUPER</strong>, because macOS keeps Cmd
+    before UTM receives it. ⌥+Space opens the Omarchy menu, ⌥+Return a terminal,
+    ⌥+K the full list of shortcuts.
+  </div>
+
+  <p>
+    Proprietary apps do not come inside — bundling them would mean redistributing
+    third-party binaries — but they all have an official ARM64 build and the image ships an installer that
+    fetches them from their source:
+  </p>
+
+  <div class="term"><pre><span class="p">$</span> omarchy-arm-extras --list
+<span class="p">$</span> omarchy-arm-extras          <span class="c"># interactive menu</span></pre></div>
+
+  <p>
+    1Password, Obsidian, Typora, LocalSend and Google Chrome. Spotify has no native
+    ARM client, but the web app does work: it needs Widevine, which ships inside Google Chrome
+    arm64.
+  </p>
+</section>
+
+<section>
+  <h2><span class="n">7</span> If you do not want to build it</h2>
+
+  <p>
+    The image this produces is published, sanitised and ready to import:
+  </p>
+
+  <div class="term"><pre><span class="c"># https://archive.org/details/omarchy-arm-utm</span>
+<span class="c"># download omarchy-arm-utm-v2.zip — 3.6 GB</span>
+<span class="p">$</span> shasum -a 256 -c omarchy-arm-utm-v2.zip.sha256
+<span class="p">$</span> unzip omarchy-arm-utm-v2.zip
+<span class="p">$</span> open "Omarchy ARM.utm"</pre></div>
+
+  <p>User <code>omarchy</code>, password <code>omarchy</code> (also root).</p>
+
+  <div class="note">
+    Next to it there is an <code>omarchy-arm-utm.zip</code> of 6.5&nbsp;GB: that is the first release,
+    and it keeps the short name so the links and checksums published with it still
+    point at the exact bytes they were written for. That is the only reason
+    the good one has <code>-v2</code> in the name. If you already downloaded that one, you do not need
+    to fetch 3.6&nbsp;GB again: the two scripts in <code>fixes/</code> bring it up to date from
+    inside.
+  </div>
+</section>
+
+<section>
+  <h2><span class="n">8</span> To undo it</h2>
+
+  <div class="term"><pre><span class="p">$</span> rm -rf ~/omarchy-arm-build   <span class="c"># the entire working directory</span></pre></div>
+
+  <p>
+    And delete the VM from UTM's own interface. The script has not touched anything else on your
+    Mac.
+  </p>
+</section>
+
+<p class="foot">
+  Unofficial work, unaffiliated with Basecamp or the Omarchy project. Omarchy supports
+  x86_64; when they publish the aarch64 ISO they already have planned, this will stop being
+  necessary.
+</p>
+
+</div>
